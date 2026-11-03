@@ -1,24 +1,263 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Document</title>
+    <title>Gerenciamento de eventos acadêmicos</title>
 </head>
 <body>
-    <form action="buscar_aluno.php" method="get">
-        <label tor="curso">Curso :</label>
+    <h1>Gerenciamento de eventos acadêmicos</h1>
 
-        <select name="curso" id="curso">
-            <option value="Desenvolvimento de Sistemas">
-                Desenvolvimento de Sistemas
-            </option>
-            <option value="Ciência de Dados">
-                Ciência de Dados
-            </option>
-        </select>
+    <!-- A mensagem informa o carregamento e apresenta erros das operações. -->
+    <p id="mensagem" role="status">Carregando dados...</p>
 
-    <button type="submit">Pesquisar</button>
-</form>
+    <!-- Esta tabela exibe os eventos cadastrados no banco de dados. -->
+    <h2>Eventos</h2>
+    <table border="1">
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Nome</th>
+                <th>Horário</th>
+                <th>Ações</th>
+            </tr>
+        </thead>
+        <tbody id="tabela-eventos"></tbody>
+    </table>
+
+    <!-- Esta tabela exibe os participantes cadastrados no banco de dados. -->
+    <h2>Participantes</h2>
+    <table border="1">
+        <thead>
+            <tr>
+                <th>CPF</th>
+                <th>Nome</th>
+                <th>E-mail</th>
+                <th>Tipo</th>
+                <th>Ações</th>
+            </tr>
+        </thead>
+        <tbody id="tabela-participantes"></tbody>
+    </table>
+
+    <!-- Esta tabela exibe as inscrições cadastradas no banco de dados. -->
+    <h2>Inscrições</h2>
+    <table border="1">
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>CPF do participante</th>
+                <th>ID do evento</th>
+                <th>Ações</th>
+            </tr>
+        </thead>
+        <tbody id="tabela-inscricoes"></tbody>
+    </table>
+
+    <script>
+        // O endpoint fornece os registros e executa as alterações no banco.
+        const enderecoApi = "eventos_api.php";
+
+        // Somente os campos listados como editáveis podem ser enviados para alteração.
+        const tabelas = [
+            {
+                nome: "eventos",
+                chavePrimaria: "ID",
+                corpo: "tabela-eventos",
+                colunas: [
+                    { campo: "ID" },
+                    { campo: "nome", editavel: true },
+                    { campo: "horario", editavel: true, tipo: "datetime-local" }
+                ]
+            },
+            {
+                nome: "participantes",
+                chavePrimaria: "CPF",
+                corpo: "tabela-participantes",
+                colunas: [
+                    { campo: "CPF" },
+                    { campo: "nome", editavel: true },
+                    { campo: "email", editavel: true, tipo: "email" },
+                    { campo: "tipo", editavel: true }
+                ]
+            },
+            {
+                nome: "inscricoes",
+                chavePrimaria: "ID",
+                corpo: "tabela-inscricoes",
+                colunas: [
+                    { campo: "ID" },
+                    { campo: "fkParticipante", editavel: true },
+                    { campo: "fkEvento", editavel: true, tipo: "number" }
+                ]
+            }
+        ];
+
+        // Atualiza a mensagem visível sem inserir conteúdo HTML vindo do servidor.
+        function exibirMensagem(texto) {
+            document.getElementById("mensagem").textContent = texto;
+        }
+
+        // Faz uma chamada à API e transforma respostas HTTP inválidas em erros visíveis.
+        async function chamarApi(dados = null) {
+            const opcoes = dados === null
+                ? { method: "GET" }
+                : {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(dados)
+                };
+            const resposta = await fetch(enderecoApi, opcoes);
+            const resultado = await resposta.json();
+
+            if (!resposta.ok) {
+                throw new Error(resultado.erro || "Não foi possível concluir a operação.");
+            }
+
+            return resultado;
+        }
+
+        // Converte o horário do banco para o formato aceito pelo campo datetime-local.
+        function horarioParaCampo(valor) {
+            return String(valor).replace(" ", "T");
+        }
+
+        // Converte o valor do campo datetime-local para o formato esperado pelo MySQL.
+        function horarioParaBanco(valor) {
+            const horario = valor.replace("T", " ");
+            return horario.length === 16 ? horario + ":00" : horario;
+        }
+
+        // Cria uma célula somente de leitura para a chave primária.
+        function criarCelulaSomenteLeitura(linha, coluna) {
+            const celula = document.createElement("td");
+            celula.textContent = linha[coluna.campo] ?? "";
+            return celula;
+        }
+
+        // Cria um formulário independente para salvar apenas o campo correspondente.
+        function criarCelulaEditavel(linha, coluna, tabela) {
+            const celula = document.createElement("td");
+            const formulario = document.createElement("form");
+            const campo = document.createElement("input");
+            const botao = document.createElement("button");
+
+            campo.type = coluna.tipo || "text";
+            campo.name = coluna.campo;
+            campo.value = coluna.tipo === "datetime-local"
+                ? horarioParaCampo(linha[coluna.campo])
+                : linha[coluna.campo];
+            campo.required = true;
+
+            // O formulário identifica o registro pela chave, sem permitir editá-la.
+            formulario.addEventListener("submit", async function (evento) {
+                evento.preventDefault();
+                const valor = coluna.tipo === "datetime-local"
+                    ? horarioParaBanco(campo.value)
+                    : campo.value;
+
+                try {
+                    await chamarApi({
+                        acao: "atualizar",
+                        tabela: tabela.nome,
+                        chave: linha[tabela.chavePrimaria],
+                        campo: coluna.campo,
+                        valor: valor
+                    });
+                    await carregarDados(false);
+                    exibirMensagem("Campo atualizado com sucesso.");
+                } catch (erro) {
+                    exibirMensagem(erro.message);
+                }
+            });
+
+            botao.type = "submit";
+            botao.textContent = "Salvar";
+            formulario.append(campo, botao);
+            celula.appendChild(formulario);
+            return celula;
+        }
+
+        // Cria o botão para excluir uma linha inteira da tabela selecionada.
+        function criarCelulaAcoes(linha, tabela) {
+            const celula = document.createElement("td");
+            const botao = document.createElement("button");
+
+            botao.type = "button";
+            botao.textContent = "Excluir linha";
+            botao.addEventListener("click", async function () {
+                const chave = linha[tabela.chavePrimaria];
+
+                // A confirmação evita exclusões acidentais.
+                if (!window.confirm("Deseja excluir este registro?")) {
+                    return;
+                }
+
+                try {
+                    await chamarApi({
+                        acao: "excluir",
+                        tabela: tabela.nome,
+                        chave: chave
+                    });
+                    await carregarDados(false);
+                    exibirMensagem("Registro excluído com sucesso.");
+                } catch (erro) {
+                    exibirMensagem(erro.message);
+                }
+            });
+
+            celula.appendChild(botao);
+            return celula;
+        }
+
+        // Preenche o corpo de uma tabela com os registros recebidos da API.
+        function renderizarTabela(tabela, registros) {
+            const corpo = document.getElementById(tabela.corpo);
+            corpo.replaceChildren();
+
+            if (registros.length === 0) {
+                const linhaVazia = document.createElement("tr");
+                const celulaVazia = document.createElement("td");
+                celulaVazia.colSpan = tabela.colunas.length + 1;
+                celulaVazia.textContent = "Nenhum registro.";
+                linhaVazia.appendChild(celulaVazia);
+                corpo.appendChild(linhaVazia);
+                return;
+            }
+
+            registros.forEach(function (registro) {
+                const linha = document.createElement("tr");
+
+                tabela.colunas.forEach(function (coluna) {
+                    linha.appendChild(coluna.editavel
+                        ? criarCelulaEditavel(registro, coluna, tabela)
+                        : criarCelulaSomenteLeitura(registro, coluna));
+                });
+
+                linha.appendChild(criarCelulaAcoes(registro, tabela));
+                corpo.appendChild(linha);
+            });
+        }
+
+        // Busca as três tabelas no carregamento da página e após cada alteração.
+        async function carregarDados(mostrarCarregamento = true) {
+            if (mostrarCarregamento) {
+                exibirMensagem("Carregando dados...");
+            }
+
+            try {
+                const dados = await chamarApi();
+                tabelas.forEach(function (tabela) {
+                    renderizarTabela(tabela, dados[tabela.nome]);
+                });
+                exibirMensagem("Dados carregados.");
+            } catch (erro) {
+                exibirMensagem(erro.message);
+            }
+        }
+
+        // Carrega os dados automaticamente assim que o script da página é executado.
+        carregarDados();
+    </script>
 </body>
 </html>
