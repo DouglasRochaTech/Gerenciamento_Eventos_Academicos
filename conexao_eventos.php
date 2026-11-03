@@ -9,7 +9,7 @@ $senha = '';
 // O charset garante a leitura correta de nomes e outros textos em português.
 $dsn = "mysql:host=$host;port=$porta;dbname=$banco;charset=utf8mb4";
 
-// Exceções permitem que o endpoint devolva uma resposta de erro apropriada.
+// Exceções permitem que a página PHP apresente erros de acesso ao banco.
 $pdo = new PDO($dsn, $usuario, $senha, [
     PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
     PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC
