@@ -1,5 +1,4 @@
 <?php
-// Esta conexão é exclusiva do banco de eventos e não altera a conexão da busca de alunos.
 $host = 'localhost';
 $porta = 3307;
 $banco = 'eventosAcademicos';

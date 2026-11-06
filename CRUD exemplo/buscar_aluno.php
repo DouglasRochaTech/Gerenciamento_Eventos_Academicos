@@ -1,5 +1,5 @@
 <?php
-require 'conexao.php';
+require 'conexao_aluno.php';
 
 $curso = $_GET['curso'] ?? '';
 

@@ -53,186 +53,25 @@ function horarioParaCampo($valor)
 
 try {
     // Esta conexão usa o banco eventosAcademicos sem alterar conexao.php.
-    require 'conexao_eventos.php';
+    require 'conexao.php';
 
-    // Os formulários enviam uma ação POST para esta própria página.
+    // Cada ação POST é encaminhada ao arquivo responsável pela operação.
     if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $acao = $_POST['acao'] ?? '';
-        $nomeTabela = $_POST['tabela'] ?? '';
-
         if (!is_string($acao)) {
             throw new InvalidArgumentException('Ação inválida.');
         }
 
-        // Somente as três tabelas declaradas acima podem receber alterações.
-        if (!is_string($nomeTabela) || !isset($tabelasPermitidas[$nomeTabela])) {
-            throw new InvalidArgumentException('Tabela inválida.');
+        $scripts = [
+            'cadastrar' => 'salvar.php',
+            'atualizar' => 'editar.php',
+            'excluir' => 'excluir.php'
+        ];
+        if (!isset($scripts[$acao])) {
+            throw new InvalidArgumentException('Ação inválida.');
         }
 
-        $configuracao = $tabelasPermitidas[$nomeTabela];
-
-        // Cada cadastro usa somente os campos definidos na tabela correspondente.
-        if ($acao === 'cadastrar') {
-            if ($nomeTabela === 'eventos') {
-                $nome = $_POST['nome'] ?? '';
-                $horario = $_POST['horario'] ?? '';
-
-                if (!is_string($nome) || !is_string($horario)) {
-                    throw new InvalidArgumentException('Informe dados válidos para o evento.');
-                }
-
-                $nome = trim($nome);
-                if ($nome === '' || $horario === '') {
-                    throw new InvalidArgumentException('Informe o nome e o horário do evento.');
-                }
-
-                // O formulário usa datetime-local, enquanto o MySQL usa espaço entre data e hora.
-                $horario = str_replace('T', ' ', $horario);
-                if (strlen($horario) === 16) {
-                    $horario .= ':00';
-                }
-
-                $consulta = $pdo->prepare(
-                    'INSERT INTO eventos (nome, horario) VALUES (:nome, :horario)'
-                );
-                $consulta->execute([
-                    'nome' => $nome,
-                    'horario' => $horario
-                ]);
-            } elseif ($nomeTabela === 'participantes') {
-                $cpf = $_POST['CPF'] ?? '';
-                $nome = $_POST['nome'] ?? '';
-                $email = $_POST['email'] ?? '';
-                $tipo = $_POST['tipo'] ?? '';
-
-                if (
-                    !is_string($cpf)
-                    || !is_string($nome)
-                    || !is_string($email)
-                    || !is_string($tipo)
-                ) {
-                    throw new InvalidArgumentException('Informe dados válidos para o participante.');
-                }
-
-                $cpf = trim($cpf);
-                $nome = trim($nome);
-                $email = trim($email);
-                $tipo = trim($tipo);
-
-                // O CPF segue o formato de 11 números usado pela tabela do banco.
-                if (!preg_match('/^[0-9]{11}$/', $cpf)) {
-                    throw new InvalidArgumentException('O CPF deve ter exatamente 11 números.');
-                }
-
-                if ($nome === '' || $email === '' || $tipo === '') {
-                    throw new InvalidArgumentException('Preencha todos os dados do participante.');
-                }
-
-                if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
-                    throw new InvalidArgumentException('Informe um e-mail válido.');
-                }
-
-                $consulta = $pdo->prepare(
-                    'INSERT INTO participantes (CPF, nome, email, tipo)
-                     VALUES (:cpf, :nome, :email, :tipo)'
-                );
-                $consulta->execute([
-                    'cpf' => $cpf,
-                    'nome' => $nome,
-                    'email' => $email,
-                    'tipo' => $tipo
-                ]);
-            } elseif ($nomeTabela === 'inscricoes') {
-                $cpf = $_POST['fkParticipante'] ?? '';
-                $idEvento = $_POST['fkEvento'] ?? '';
-
-                if (
-                    !is_string($cpf)
-                    || !is_string($idEvento)
-                    || !preg_match('/^[0-9]{11}$/', $cpf)
-                    || !ctype_digit($idEvento)
-                    || (int) $idEvento < 1
-                ) {
-                    throw new InvalidArgumentException('Selecione o participante e o evento.');
-                }
-
-                $consulta = $pdo->prepare(
-                    'INSERT INTO inscricoes (fkParticipante, fkEvento)
-                     VALUES (:cpf, :idEvento)'
-                );
-                $consulta->execute([
-                    'cpf' => $cpf,
-                    'idEvento' => $idEvento
-                ]);
-            }
-
-            // O redirecionamento evita repetir o cadastro ao atualizar a página.
-            header('Location: index.php?resultado=cadastrado');
-            exit;
-        }
-
-        $chavePrimaria = $configuracao['chavePrimaria'];
-        $chave = $_POST['chave'] ?? '';
-
-        // A chave localiza o registro e nunca é recebida como campo editável.
-        if (!is_string($chave) || $chave === '') {
-            throw new InvalidArgumentException('A chave do registro é obrigatória.');
-        }
-
-        if ($acao === 'atualizar') {
-            $campo = $_POST['campo'] ?? '';
-
-            // A lista de colunas permite editar somente campos não primários.
-            if (
-                !is_string($campo)
-                || !isset($configuracao['colunas'][$campo])
-                || empty($configuracao['colunas'][$campo]['editavel'])
-            ) {
-                throw new InvalidArgumentException('Campo inválido ou não editável.');
-            }
-
-            $valor = $_POST['valor'] ?? '';
-
-            // Os campos do esquema são obrigatórios e não aceitam valores vazios.
-            if (!is_string($valor) || trim($valor) === '') {
-                throw new InvalidArgumentException('O valor do campo é obrigatório.');
-            }
-
-            // O MySQL espera um espaço entre a data e o horário.
-            if ($campo === 'horario') {
-                $valor = str_replace('T', ' ', $valor);
-                if (strlen($valor) === 16) {
-                    $valor .= ':00';
-                }
-            }
-
-            // Os identificadores vêm exclusivamente da lista fixa de tabelas e colunas.
-            $consulta = $pdo->prepare(
-                "UPDATE $nomeTabela SET $campo = :valor WHERE $chavePrimaria = :chave"
-            );
-            $consulta->execute([
-                'valor' => $valor,
-                'chave' => $chave
-            ]);
-
-            // O redirecionamento evita repetir a atualização ao recarregar a página.
-            header('Location: index.php?resultado=atualizado');
-            exit;
-        }
-
-        if ($acao === 'excluir') {
-            // A chave primária limita a exclusão a uma única linha.
-            $consulta = $pdo->prepare(
-                "DELETE FROM $nomeTabela WHERE $chavePrimaria = :chave"
-            );
-            $consulta->execute(['chave' => $chave]);
-
-            // O redirecionamento evita repetir a exclusão ao recarregar a página.
-            header('Location: index.php?resultado=excluido');
-            exit;
-        }
-
-        throw new InvalidArgumentException('Ação inválida.');
+        require $scripts[$acao];
     }
 
     // Mensagens fixas confirmam ações concluídas sem confiar em texto da URL.
@@ -261,14 +100,10 @@ try {
     }
 }
 
-// As três tabelas são consultadas após o processamento, inclusive quando a ação falha.
+// As três tabelas são carregadas pelo script de leitura.
 if (isset($pdo)) {
     try {
-        foreach ($tabelasPermitidas as $nomeTabela => $configuracao) {
-            $registros[$nomeTabela] = $pdo
-                ->query($configuracao['consulta'])
-                ->fetchAll();
-        }
+        require 'listar.php';
     } catch (PDOException $erro) {
         // Uma falha ao carregar os registros também fica registrada no log do servidor.
         error_log($erro->getMessage());
