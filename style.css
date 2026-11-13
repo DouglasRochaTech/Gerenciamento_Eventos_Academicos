@@ -1,0 +1,179 @@
+
+* {
+    box-sizing: border-box;
+}
+
+body {
+    margin: 0;
+    padding: 30px;
+    font-family: Arial, sans-serif;
+    background: #F5F2E9;
+    color: #343B34;
+}
+
+/* CABEÇALHO */
+h1 {
+    background: #355E45;
+    color: white;
+    text-align: center;
+    padding: 28px;
+    margin: -30px -30px 35px;
+    font-size: 26px;
+}
+
+/* TÍTULOS */
+h2 {
+    color: #355E45;
+    font-size: 21px;
+    margin: 30px 0 18px;
+    padding-left: 12px;
+    border-left: 5px solid #6F8B70;
+}
+
+/* FORMULÁRIOS */
+body > form {
+    background: #FFFDF8;
+    padding: 25px;
+    border: 1px solid #E8E1D2;
+    border-radius: 10px;
+    margin-bottom: 25px;
+}
+
+label {
+    display: inline-block;
+    font-weight: bold;
+    margin: 8px;
+    color: #465448;
+}
+
+/* CAMPOS */
+input, select, textarea {
+    padding: 11px;
+    margin: 5px;
+    border: 1px solid #D8D1C2;
+    border-radius: 6px;
+    background: #FFFFFF;
+    font-size: 14px;
+    outline: none;
+}
+
+input:focus, select:focus, textarea:focus {
+    border-color: #6F8B70;
+    box-shadow: 0 0 0 2px #E4EBDD;
+}
+
+/* BOTÕES */
+button, input[type="submit"] {
+    background: #355E45;
+    color: white;
+    border: none;
+    padding: 11px 18px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: bold;
+}
+
+button:hover, input[type="submit"]:hover {
+    background: #294C38;
+}
+
+/* BOTÃO EXCLUIR */
+form:has(input[name="acao"][value="excluir"]) button {
+    background: #B65C50;
+}
+
+form:has(input[name="acao"][value="excluir"]) button:hover {
+    background: #94453C;
+}
+
+/* TABELAS */
+body > table {
+    width: 100%;
+    background: #FFFDF8;
+    border-collapse: collapse;
+    margin-bottom: 35px;
+    border-radius: 9px;
+    overflow: hidden;
+}
+
+th {
+    background: #355E45;
+    color: white;
+    padding: 15px;
+    text-align: left;
+}
+
+td {
+    padding: 12px;
+    border-bottom: 1px solid #E8E1D2;
+}
+
+tr:nth-child(even) {
+    background: #F8F6EF;
+}
+
+tr:hover {
+    background: #EBEFE5;
+}
+
+/* LINKS */
+a {
+    color: #355E45;
+    text-decoration: none;
+    font-weight: bold;
+}
+
+a:hover {
+    text-decoration: underline;
+}
+
+/* FORMULÁRIOS NAS TABELAS */
+td form {
+    margin: 0;
+    padding: 0;
+    background: transparent;
+    border: none;
+}
+
+td input {
+    max-width: 150px;
+}
+
+/* MENSAGENS */
+body > p {
+    background: #E4EBDD;
+    color: #355E45;
+    padding: 14px;
+    border-radius: 7px;
+}
+
+/* CELULAR */
+@media (max-width: 768px) {
+    body {
+        padding: 15px;
+    }
+
+    h1 {
+        margin: -15px -15px 25px;
+        font-size: 21px;
+    }
+
+    body > form {
+        padding: 15px;
+    }
+
+    input, select {
+        width: 100%;
+        margin: 5px 0;
+    }
+
+    body > table {
+        display: block;
+        overflow-x: auto;
+    }
+
+    th, td {
+        white-space: nowrap;
+    }
+}
+    

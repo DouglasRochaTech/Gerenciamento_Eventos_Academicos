@@ -1,3 +1,4 @@
+<link rel="stylesheet" href="style.css">
 <?php
 // A conexão é carregada neste bloco para que falhas possam ser mostradas na página.
 $mensagem = '';
